@@ -1,0 +1,46 @@
+Machine: M1; energy: 50
+Machine: M2; energy: 45
+Machine: M3; energy: 60
+Machine: M4; energy: 40
+Machine: M5; energy: 50
+Machine: M6; energy: 50
+Machine: M7; energy: 100
+Machine: M8; energy: 60
+Machine: M9; energy: 55
+Machine: M10; energy: 40
+Machine: M11; energy: 75
+
+Tool: Tool1; num: 1
+Tool: Tool2; num: 2
+Tool: Tool3; num: 3
+
+Part: Part1; num: 5; cost: 50
+Part: Part2; num: 10; cost: 100
+
+Task: T1; tools: Tool1, Tool2; parts: Part1, Part2
+Task: T2; tools: Tool3; parts: Part2
+Task: T3; tools: Tool2, Tool3; parts: Part1, Part2
+Task: T_part1; made-part: Part1; quantity: 3
+Task: T_part1b; made-part: Part1; quantity: 1
+
+Task-Machine: T1, M1; duration: 2; value: 200
+Task-Machine: T1, M2; duration: 3; value: 250
+Task-Machine: T2, M3; duration: 2; value: 300
+Task-Machine: T2, M4; duration: 3; value: 500
+Task-Machine: T3, M5; duration: 4; value: 400
+Task-Machine: T3, M6; duration: 2; value: 250
+Task-Machine: T_part1, M7; duration: 2; value: 0
+Task-Machine: T_part1b, M7; duration: 1; value: 0
+
+Job: J1; tasks: T1, T2, T3
+Job: J2; tasks: T1, T2, T3
+Job: J3; tasks: T1, T2, T3
+Job: J4; tasks: T_part1
+Job: J5; tasks: T_part1b
+
+Order: s6.1; deadline: 15; jobs: J1, J2, J3; machines: M1, M2, M3, M4, M5, M6; use_parts
+Order: s6.2; deadline: 12; jobs: J1, J2, J3; machines: M1, M2, M3, M4, M5, M6; use_parts
+
+Order: s6.3; deadline: 18; jobs: J1, J2, J3, J4, J5; machines: M1, M2, M3, M4, M5, M6, M7; use_parts
+Order: s6.4; deadline: 12; jobs: J1, J2, J3, J4, J5; machines: M1, M2, M3, M4, M5, M6, M7; use_parts
+

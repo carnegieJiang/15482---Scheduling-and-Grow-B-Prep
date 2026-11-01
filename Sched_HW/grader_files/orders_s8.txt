@@ -1,0 +1,83 @@
+Machine: M1; energy: 50
+Machine: M2; energy: 45
+Machine: M3; energy: 60
+Machine: M4; energy: 40
+Machine: M5; energy: 55
+Machine: M6; energy: 50
+Machine: M7; energy: 40
+Machine: M8; energy: 60
+Machine: M9; energy: 55
+Machine: M10; energy: 40
+Machine: M11; energy: 75
+
+Tool: Tool1; num: 3
+Tool: Tool2; num: 5
+Tool: Tool3; num: 6
+Tool: Tool4; num: 3
+
+Part: Part1; num: 9; cost: 50
+Part: Part2; num: 10; cost: 75
+Part: Part3; num: 5; cost: 150
+
+Task: T1; tools: Tool1, Tool2; parts: Part1, Part2
+Task: T2; tools: Tool3; parts: Part2
+Task: T3; tools: Tool2, Tool3; parts: Part1, Part2
+Task: T4; tools: Tool1, Tool1; parts: Part1, Part1
+Task: T5; tools: Tool1; parts: Part3
+Task: T6; tools: Tool2; parts: Part1, Part1
+Task: T7; tools: Tool3; parts: Part2, Part3
+Task: T8; tools: Tool1; parts: Part1
+Task: T9; tools: Tool1; parts: Part1
+Task: T10; tools: Tool2; parts: Part2
+Task: T11; tools: Tool2; parts: Part2
+Task: T12; tools: Tool3; parts: Part3
+Task: T_part1; made-part: Part1; quantity: 3
+Task: T_part1b; made-part: Part1; quantity: 1
+
+Task-Machine: T1, M1; duration: 2; value: 200
+Task-Machine: T1, M2; duration: 3; value: 300
+Task-Machine: T2, M3; duration: 2; value: 300
+Task-Machine: T2, M4; duration: 3; value: 400
+Task-Machine: T2, M5; duration: 4; value: 500
+Task-Machine: T3, M6; duration: 3; value: 400
+Task-Machine: T3, M7; duration: 2; value: 300
+Task-Machine: T4, M8; duration: 3; value: 400
+Task-Machine: T4, M9; duration: 2; value: 250
+Task-Machine: T4, M10; duration: 4; value: 400
+Task-Machine: T5, M1; duration: 4; value: 400
+Task-Machine: T5, M3; duration: 2; value: 200
+Task-Machine: T5, M6; duration: 1; value: 100
+Task-Machine: T6, M2; duration: 4; value: 400
+Task-Machine: T6, M5; duration: 2; value: 200
+Task-Machine: T6, M6; duration: 1; value: 100
+Task-Machine: T7, M7; duration: 4; value: 400
+Task-Machine: T7, M9; duration: 2; value: 300
+Task-Machine: T8, M1; duration: 3; value: 300
+Task-Machine: T8, M2; duration: 2; value: 200
+Task-Machine: T9, M3; duration: 3; value: 300
+Task-Machine: T9, M4; duration: 2; value: 220
+Task-Machine: T10, M5; duration: 3; value: 300
+Task-Machine: T10, M6; duration: 2; value: 200
+Task-Machine: T11, M7; duration: 3; value: 300
+Task-Machine: T11, M8; duration: 2; value: 200
+Task-Machine: T12, M9; duration: 3; value: 300
+Task-Machine: T12, M10; duration: 2; value: 200
+Task-Machine: T_part1, M11; duration: 2; value: 0
+Task-Machine: T_part1b, M11; duration: 1; value: 0
+
+Job: J1; tasks: T1, T2, T3
+Job: J2; tasks: T1, T2, T3
+Job: J3; tasks: T4, T5, T6, T7
+Job: J4; tasks: T4, T5, T6, T7
+Job: J5; tasks: T8, T9, T10, T11, T12
+Job: J6; tasks: T_part1
+Job: J7; tasks: T_part1b
+Job: J8; tasks: T_part1b
+
+Order: s8.1; deadline: 25; jobs: J1, J2, J3, J4, J5, J6, J7, J8; machines: M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M11; use_costs
+Order: s8.2; deadline: 18; jobs: J1, J2, J3, J4, J5, J6, J7, J8; machines: M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M11; use_costs
+
+Order: s8.3; deadline: 25; jobs: J1, J2, J3, J4, J5, J6, J7, J8; machines: M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M11; use_costs; use_parts
+Order: s8.4; deadline: 18; jobs: J1, J2, J3, J4, J5, J6, J7, J8; machines: M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M11; use_costs; use_parts
+
+
