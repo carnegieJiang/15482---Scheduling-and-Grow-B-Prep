@@ -141,6 +141,11 @@ class JobScheduling():
         for job in self.jobs:
             for task in job.tasks:
                 # BEGIN STUDENT CODE
+                choices = [
+                    self.scheduleds[self._key(job, task, tm.machine)]
+                    for tm in task.task_machines
+                ]
+                model.Add(sum(choices) <= 1)
                 # END STUDENT CODE
                 pass
 
@@ -150,6 +155,12 @@ class JobScheduling():
         model = self.model
         for machine in self.machines:
             # BEGIN STUDENT CODE
+            machine_intervals = [
+                interval
+                for key, interval in self.intervals.items()
+                if key[2] == machine.name
+            ]
+            model.AddNoOverlap(machine_intervals)
             # END STUDENT CODE
             pass
 
@@ -161,8 +172,21 @@ class JobScheduling():
         model = self.model
         for job in self.jobs:
             # BEGIN STUDENT CODE
+            for i in range(len(job.tasks) - 1):
+                prev_task, next_task = job.tasks[i], job.tasks[i+1]
+                for prev_tm in prev_task.task_machines:
+                    prev_key = self._key(job, prev_task, prev_tm.machine)
+
+                    for next_tm in next_task.task_machines:
+                        next_key = self._key(job, next_task, next_tm.machine)
+
+                        model.Add(
+                            self.ends[prev_key] <= self.starts[next_key]
+                        ).OnlyEnforceIf([
+                            self.scheduleds[prev_key],
+                            self.scheduleds[next_key],
+                        ])
             # END STUDENT CODE
-            pass
 
     # For each job, add constraints such that if a job is started it
     #   must be finished.  That is, either all tasks in a job are 
@@ -173,8 +197,19 @@ class JobScheduling():
         model = self.model
         for job in self.jobs:
             # BEGIN STUDENT CODE
+            task_statuses = []
+
+            for task in job.tasks:
+                status = sum(
+                    self.scheduleds[self._key(job, task, tm.machine)]
+                    for tm in task.task_machines
+                )
+                task_statuses.append(status)
+
+            for i in range(len(task_statuses)-1):
+                prev_status, next_status = task_statuses[i], task_statuses[i+1]
+                model.Add(prev_status == next_status)
             # END STUDENT CODE
-            pass
 
     # If a scheduled task needs a tool, it is removed from the pool at
     #   the start of the task and returned at the end.
@@ -183,8 +218,26 @@ class JobScheduling():
     def create_tools_constraints(self):
         model = self.model
         # BEGIN STUDENT CODE
+        for tool in self.tools:
+            times = []
+            demands = []
+            actives = []
+            for job in self.jobs:
+                for task in job.tasks:
+                    quantity = task.tools.count(tool)
+                    if not quantity:
+                        continue
+                    for tm in task.task_machines:
+                        key = self._key(job, task, tm.machine)
+                        scheduled = self.scheduleds[key]
+                        times.extend([self.starts[key], self.ends[key]])
+                        demands.extend([quantity, -quantity])
+                        actives.extend([scheduled, scheduled])
+            if times:
+                model.AddReservoirConstraintWithActive(
+                    times, demands, actives, 0, tool.num
+                )
         # END STUDENT CODE
-        pass
 
     def isPartsTask(self, task): return isinstance(task, PartsTask)
 
@@ -195,8 +248,30 @@ class JobScheduling():
     def create_parts_constraints(self):
         model = self.model
         # BEGIN STUDENT CODE
+        for part in self.parts:
+            times = [0]
+            demands = [part.quantity]
+            actives = [model.NewConstant(1)]
+
+            for job in self.jobs:
+                for task in job.tasks:
+                    consumed = task.parts.count(part)
+                    for tm in task.task_machines:
+                        key = self._key(job, task, tm.machine)
+                        scheduled = self.scheduleds[key]
+
+                        if consumed > 0:
+                            times.append(self.starts[key])
+                            demands.append(-consumed)
+                            actives.append(scheduled)
+
+                        if self.isPartsTask(task) and task.produced_part == part:
+                            times.append(self.ends[key])
+                            demands.append(task.quantity)
+                            actives.append(scheduled)
+
+            model.AddReservoirConstraintWithActive(times, demands, actives, 0, part.quantity)
         # END STUDENT CODE
-        pass
 
     # Set the self.value variable to be the total value of objects produced
     #  by all the scheduled tasks
@@ -218,6 +293,16 @@ class JobScheduling():
         model = self.model
         self.cost = model.NewIntVar(0, 1000000, "cost")
         # BEGIN STUDENT CODE
+        costs = []
+        for job in self.jobs:
+            for task in job.tasks:
+                parts_cost = sum(part.cost for part in task.parts)
+                for tm in task.task_machines:
+                    key = self._key(job, task, tm.machine)
+                    scheduled = self.scheduleds[key]
+                    energy_cost = tm.duration * tm.machine.energy_cost
+                    costs.append((energy_cost + parts_cost) * scheduled)
+        model.Add(self.cost == sum(costs))
         # END STUDENT CODE
 
     def add_optimization(self):
