@@ -1,0 +1,61 @@
+LightBehavior 02:00-02:30
+LightBehavior 06:00-06:30
+LightBehavior 09:00-09:30
+LightBehavior 09:30-10:00
+LightBehavior 12:30-13:00
+LightBehavior 17:00-17:30
+LightBehavior 22:00-22:30
+LightBehavior 22:30-23:00
+LightBehavior 23:00-23:30
+LightBehavior 23:30-24:00
+
+LowerHumidBehavior 00:30-01:00
+LowerHumidBehavior 02:00-02:30
+LowerHumidBehavior 03:00-03:30
+LowerHumidBehavior 04:00-04:30
+LowerHumidBehavior 05:00-05:30
+LowerHumidBehavior 06:00-06:30
+LowerHumidBehavior 07:30-08:00
+LowerHumidBehavior 08:30-09:00
+LowerHumidBehavior 09:30-10:00
+LowerHumidBehavior 10:30-11:00
+LowerHumidBehavior 12:00-12:30
+LowerHumidBehavior 13:00-13:30
+LowerHumidBehavior 14:30-15:00
+LowerHumidBehavior 16:00-16:30
+LowerHumidBehavior 17:00-17:30
+LowerHumidBehavior 18:00-18:30
+LowerHumidBehavior 19:00-19:30
+LowerHumidBehavior 20:30-21:00
+LowerHumidBehavior 22:00-22:30
+LowerHumidBehavior 23:30-24:00
+
+LowerTempBehavior 01:00-01:30
+LowerTempBehavior 05:30-06:00
+LowerTempBehavior 10:00-10:30
+LowerTempBehavior 14:00-14:30
+LowerTempBehavior 17:30-18:00
+LowerTempBehavior 21:30-22:00
+
+RaiseTempBehavior 03:30-04:00
+RaiseTempBehavior 06:30-07:00
+RaiseTempBehavior 11:00-11:30
+RaiseTempBehavior 15:30-16:00
+RaiseTempBehavior 20:00-20:30
+
+LowerSMoistBehavior 02:30-03:00
+LowerSMoistBehavior 07:00-07:30
+LowerSMoistBehavior 11:30-12:00
+LowerSMoistBehavior 15:00-15:30
+LowerSMoistBehavior 19:30-20:00
+
+RaiseSMoistBehavior 00:00-00:30
+RaiseSMoistBehavior 04:30-05:00
+RaiseSMoistBehavior 09:00-09:30
+RaiseSMoistBehavior 13:30-14:00
+RaiseSMoistBehavior 16:30-17:00
+RaiseSMoistBehavior 20:00-20:30
+
+CameraBehavior 08:00-08:30
+CameraBehavior 13:30-14:00
+
