@@ -1,6 +1,7 @@
 # Import Python wrapper for or-tools CP-SAT solver.
 from ortools.sat.python import cp_model
 import visualize_solution
+import math
 
 class Greenhouse_Scheduler:
 
@@ -51,9 +52,11 @@ class Greenhouse_Scheduler:
     def createDurationConstraints(self, model):
         for behavior in self.behaviors_info:
             duration = self.behaviors_info[behavior][0] # in minutes
-            # BEGIN STUDENT CODE
-            # END STUDENT CODE
-            pass
+            required_chunks = math.ceil(duration / self.minutes_per_chunk)
+            model.Add(
+                sum(self.all_jobs[behavior, time]
+                    for time in range(self.horizon)) >= required_chunks
+            )
 
     # CREATE and add constraints for behaviors that cannot be run
     #   simultaneously for each time
@@ -72,19 +75,58 @@ class Greenhouse_Scheduler:
     #    Lights: lights on
     #    Camera: lights on
     def createMutualExclusiveConstraints(self,model):
+        # Each behavior describes the state it needs for the actuators it
+        # controls.  Two behaviors conflict when they both turn an actuator
+        # on, or when one turns an actuator on while the other turns it off.
+        # Two behaviors that both leave a shared actuator off are compatible.
+        actuator_states = {
+            "LowerTemp": {"fan": 1, "lights": 0},
+            "RaiseTemp": {"lights": 1, "fan": 0},
+            "LowerHumid": {"fan": 1, "wpump": 0},
+            "LowerSMoist": {"fan": 1, "wpump": 0},
+            "RaiseSMoist": {"fan": 0, "wpump": 1},
+            "Light": {"lights": 1},
+            "Lights": {"lights": 1},
+            "Camera": {"lights": 1},
+        }
+
+        behaviors = list(self.behaviors_info)
+        conflicts = []
+        for first_index, first in enumerate(behaviors):
+            first_states = actuator_states.get(first, {})
+            for second in behaviors[first_index + 1:]:
+                second_states = actuator_states.get(second, {})
+                shared_actuators = set(first_states) & set(second_states)
+                conflict = any(
+                    first_states[actuator] == 1
+                    or second_states[actuator] == 1
+                    or first_states[actuator] != second_states[actuator]
+                    for actuator in shared_actuators
+                )
+                if conflict:
+                    conflicts.append((first, second))
+
         for time in range(self.horizon):
-            # BEGIN STUDENT CODE
-            # END STUDENT CODE
-            pass
+            for first, second in conflicts:
+                model.Add(
+                    self.all_jobs[first, time] + self.all_jobs[second, time]
+                    <= 1
+                )
 
     # CREATE and add constraints for maximum amount of time behaviors should
     # be run at night between [20,24) U [0,8)
     def createNightConstraints(self, model):
         for behavior in self.behaviors_info:
             max_night = self.behaviors_info[behavior][2] # in minutes
-            # BEGIN STUDENT CODE
-            # END STUDENT CODE
-            pass
+            max_night_chunks = math.floor(max_night / self.minutes_per_chunk)
+            day_start = 8 * 60 // self.minutes_per_chunk
+            day_end = 20 * 60 // self.minutes_per_chunk
+            night_times = list(range(0, day_start))
+            night_times += list(range(day_end, self.horizon))
+            model.Add(
+                sum(self.all_jobs[behavior, time] for time in night_times)
+                <= max_night_chunks
+            )
 
     # CREATE and add constraints for running behaviors at most once per 
     #    minimum and at least once per maximum time (given in minutes)
@@ -95,9 +137,35 @@ class Greenhouse_Scheduler:
         for behavior in self.behaviors_info:
             if (behavior != "Light"):
                 min_spacing, max_spacing = self.behaviors_info[behavior][1]
-                # BEGIN STUDENT CODE
-                # END STUDENT CODE
-                pass
+                min_blocks = math.floor(min_spacing / self.minutes_per_chunk)
+                max_blocks = math.floor(max_spacing / self.minutes_per_chunk)
+
+                # Behaviors with no permitted night operation, including the
+                # camera, are constrained only over the daytime interval.
+                if self.behaviors_info[behavior][2] == 0:
+                    first_time = 8 * 60 // self.minutes_per_chunk
+                    last_time = 20 * 60 // self.minutes_per_chunk
+                else:
+                    first_time = 0
+                    last_time = self.horizon
+
+                # A minimum spacing of min_blocks means that any window of
+                # min_blocks + 1 starts can contain at most one start.
+                min_window = min_blocks + 1
+                for start in range(first_time, last_time - min_window + 1):
+                    model.Add(
+                        sum(self.all_jobs[behavior, time]
+                            for time in range(start, start + min_window)) <= 1
+                    )
+
+                # A maximum spacing of max_blocks means every complete
+                # max_blocks + 1 window must contain at least one start.
+                max_window = max_blocks + 1
+                for start in range(first_time, last_time - max_window + 1):
+                    model.Add(
+                        sum(self.all_jobs[behavior, time]
+                            for time in range(start, start + max_window)) >= 1
+                    )
 
     # Solve model.
     def solve(self,model, visualize):
