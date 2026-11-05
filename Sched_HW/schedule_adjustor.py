@@ -7,6 +7,8 @@ from cv_learn import *
 from foliage import *
 import os
 from limits import *
+import shutil
+
 
 
 class ScheduleAdjustmentMonitor(Monitor):
@@ -72,7 +74,7 @@ class ScheduleAdjustmentMonitor(Monitor):
                                     for start, end in schedule['LightBehavior']]
         lighting_behavior_on = False
         for time_interval in self.lighting_intervals:
-            print(f"ti 0 {time_interval[0]}, ti 1 {time_interval[1]}, time {self.mtime}")
+            # print(f"ti 0 {time_interval[0]}, ti 1 {time_interval[1]}, time {self.mtime}")
 
             if time_interval[0] <= self.mtime < time_interval[1]:
                 lighting_behavior_on = True
@@ -94,6 +96,7 @@ class ScheduleAdjustmentMonitor(Monitor):
         
         self.problem = Greenhouse_Scheduler("test_schedule.txt",self.behaviors_info, self.minutes)
         self.solution = self.problem.solveProblem(visualize=False)
+        
         if (self.solution == cp_model.INFEASIBLE):
             print("No solution feasable 1")
             self.scheduled_light = max(2, self.scheduled_raise_moist - 4)
@@ -104,6 +107,8 @@ class ScheduleAdjustmentMonitor(Monitor):
             self.solution = self.problem.solveProblem(visualize=False)
             if (self.solution == cp_model.INFEASIBLE):
                 print("No solution feasable 2")
+        
+        shutil.copy("test_schedule.txt", f"./schedules/schedule_{str(int(self.sensordata['unix_time']))}.txt")
 
         with open(self.filename, "a") as f:
             f.write(
