@@ -6,25 +6,35 @@ from cv_utils import *
 from cv_learn import *
 from foliage import *
 import os
+from limits import *
+
 
 class ScheduleAdjustmentMonitor(Monitor):
     
 
-    def __init__(self, period=3600):
+    def __init__(self, period=1800):
         super(ScheduleAdjustmentMonitor, self).__init__("ScheduleAdjustmentMonitor", period)
-        self.ambient_data = []
+        self.period = period
+        self.day_light_should_be_on_counter = 0
+        self.day_rm_should_be_on_counter = 0
         self.lighting_intervals = []
-        self.insolation = 0 # Per hour
-        self.target = 8500 # Default value
+        self.rm_intervals = []
+        self.last_time = 24*60*60 # Start with the prior day
+        self.light_level_limits = limits['light_level']
+        self.raise_moist_limits = limits['moisture']
+        self.scheduled_light = 10
+        self.scheduled_raise_moist = 2
+        self.mtime = 0 # Temporary value
+        self.time = 0 # Temporary value
+        
 
-        self.stage = "unsprouted"
-        self.scheduled_light = 5
-        self.percent_white = 0
-        self.filename = "plant_status_log.csv"
+        self.filename = "schedule_status_log.csv"
         with open(self.filename, "w") as f:
             f.write(
-                "time,status,scheduled light,percent white\n"
+                "time,light miss counter,scheduled light hours,rm miss counter,scheduled rm hours\n"
             )
+
+
         #schedule 30 minute chunks
         self.minutes = 30
         self.behaviors_info = {}
@@ -36,11 +46,18 @@ class ScheduleAdjustmentMonitor(Monitor):
         self.behaviors_info["LowerMoist"] = (120,(2*60,4*60),12*60)
         self.behaviors_info["RaiseMoist"] = (120,(2*60,4*60),12*60)
         self.behaviors_info["TakeImage"] = (60,(3*60,6*60),0)
-        self.problem = Greenhouse_Scheduler("greenhouse_schedule.txt",self.behaviors_info, self.minutes)
+        self.problem = Greenhouse_Scheduler("test_schedule.txt",self.behaviors_info, self.minutes)
     
         self.solution = self.problem.solveProblem(visualize=False)
 
-        self.reset()
+        if (self.mtime < time_since_midnight(self.last_time)):
+            self.reset_day()
+
+    def activate(self):
+        # Might need to be here since getExecutive might not exist in __init__
+        self.planningLayer = self.getExecutive().agent.getPlanningLayer()
+        self.planningLayer.setTestingSchedule("test_schedule.txt")
+        self.planningLayer.switch_to_test_sched()
 
     def perceive(self):
         self.time = self.sensordata["unix_time"]
@@ -50,157 +67,58 @@ class ScheduleAdjustmentMonitor(Monitor):
         
 
     def monitor(self):
-        foliage_classifier = FoliageClassifier("foliage_classifier.dill")
-        latest_image = self.findLatestImage()
-        if (latest_image == None):
-            print("No images found")
-        else:
-            out_mask = foliage_classifier.classify(readImage(latest_image))
-            self.percent_white = np.count_nonzero(out_mask == 255)/out_mask.size
-            if (self.stage == "unsprouted" and self.percent_white > 0.05):
-                self.stage = "sprouts"
-                self.scheduled_light = 7-(self.insolation/1000.0)
-                self.behaviors_info["Light"] = (self.scheduled_light*60,(self.minutes,4*60),3*60)
-                self.problem = Greenhouse_Scheduler("greenhouse_schedule.txt",self.behaviors_info, self.minutes)
-                self.solution = self.problem.solveProblem(visualize=False)
-
-            if (self.stage == "sprouts" and self.percent_white > 0.1):
-                self.stage = "small"
-                self.scheduled_light = 10-(self.insolation/1000.0)
-                self.behaviors_info["Light"] = (self.scheduled_light*60,(self.minutes,4*60),3*60)
-                self.problem = Greenhouse_Scheduler("greenhouse_schedule.txt",self.behaviors_info, self.minutes)
-                self.solution = self.problem.solveProblem(visualize=False)
-                
-            if (self.stage == "small" and self.percent_white > 0.2):
-                self.stage = "big"
-                self.scheduled_light = 12-(self.insolation/1000.0)
-                self.behaviors_info["Light"] = (self.scheduled_light*60,(self.minutes,4*60),3*60)
-                self.problem = Greenhouse_Scheduler("greenhouse_schedule.txt",self.behaviors_info, self.minutes)
-                self.solution = self.problem.solveProblem(visualize=False)
-                
-            with open(self.filename, "a") as f:
-                f.write(
-                    f"{self.time},"
-                    f"{self.stage},"
-                    f"{self.scheduled_light},"
-                    f"{self.percent_white}\n"
-                )
-
-        #light monitering behavior
-
-        #print("INSOLATION: %.1f %d" %(self.mtime/3600.0, self.insolation))
-        if (self.mtime < time_since_midnight(self.last_time)):
-            print("INSOLATION TODAY: %.1f" %self.insolation)
-            self.reset()
-        else:
-            # Calculate the optimal light level to reach the target value,
-            #  given the amount of time the LightBehavior will be running and
-            #  the amount of ambient light expected to be received when
-            #  the LightBehavior is not running.  Set the optimal limits
-            #  for the LightBehavior based on this calculation
-
-            # BEGIN STUDENT CODE
-            self.insolation = self.light * self.dt / 3600.0
-
-            end_of_day = 24 * 60 * 60
-            ambient_left = self.non_lighting_ambient_insolation(self.mtime, end_of_day)
-
-            time_left = self.lighting_time_left(self.mtime)
-            if time_left > 0:
-                light_needed = self.target - self.insolation - ambient_left
-                optimal = light_needed * 3600.0 / time_left
-
-                optimal = max(0.0, optimal)
-                optimal = min(1000.0, optimal)
-
-                self.current_optimal = optimal
-                self.lightBehavior.setOptimalLevel(optimal)
-
-    def findLatestImage(self):
-        picture_dir = os.path.expanduser("/home/robotanist/User/pictures_B")
-
-        if not os.path.isdir(picture_dir):
-            return None
-
-        pictures = [
-            os.path.join(picture_dir, f)
-            for f in os.listdir(picture_dir)
-            if f.startswith("terrabot6_pic_")
-        ]
-
-        if len(pictures) == 0:
-            return None
-
-        return max(pictures, key=os.path.getmtime)
-
-
-    def reset(self):
-        self.insolation = 0
-
-    def setTarget(self, target):
-        self.target = target
-
-    def read_log_file(self, filename):
-        self.ambient_data = []
-        with open(filename) as log_file:
-            for line in log_file:
-                sline = line.split(" ")
-                time = float(sline[0])
-                data = float(sline[1].strip(' \n'))
-                self.ambient_data.append((time, data))
-
-    def activate(self):
-        self.read_log_file("grader_files/ambient.log")
-        self.lightBehavior = self.getExecutive().agent.getBehavioralLayer().getBehavior("LightBehavior")
         schedule = self.getExecutive().schedule
         self.lighting_intervals = [(start*60, end*60)
                                     for start, end in schedule['LightBehavior']]
-        self.current_optimal = 900 # Arbitrary value - will be reset once the monitor begins
+        lighting_behavior_on = False
+        for time_interval in self.lighting_intervals:
+            print(f"ti 0 {time_interval[0]}, ti 1 {time_interval[1]}, time {self.mtime}")
 
-    def integrate_ambient(self, ts, te):
-        ambient_insolation = 0
-        t1, v1 = self.ambient_data[0]
-        for index in range(1, len(self.ambient_data)):
-            t2, v2 = self.ambient_data[index]
-            if (ts < t2 and te > t1):
-                if (ts > t1): # Starts within an interval
-                    v1 = v1 + ((v2 - v1)*(ts - t1)/(t2 - t1))
-                    t1 = ts
-                if (te < t2): # Ends within an interval
-                    v2 = v1 + ((v2 - v1)*(te - t1)/(t2 - t1))
-                    t2 = te
-                mval = (v1 + v2)/2.0
-                ambient_insolation += mval*(t2 - t1)/3600.0
-            t1, v1 = self.ambient_data[index]
-        return ambient_insolation
+            if time_interval[0] <= self.mtime < time_interval[1]:
+                lighting_behavior_on = True
 
-    # Helper function:
-    # How much ambient light will there be when LightBehavior is not running
-    #  between start time (ts) and end time (te)
-    def non_lighting_ambient_insolation(self, ts, te):
-        ambient_light = 0
-        t, t_last = (ts, 0)
-        for interval in self.lighting_intervals:
-            if (te <= interval[0]): break
-            elif (t < interval[0]):
-                t = max(t, t_last)
-                ambient_light += self.integrate_ambient(t, min(te, interval[0]))
-                t = interval[1]
-            t_last = interval[1]
+        if (lighting_behavior_on and not 
+            (self.light_level_limits[0] <= self.light < self.light_level_limits[1])):
+            self.day_light_should_be_on_counter += 1
+        # Should get new schedule every day
+        
+        if (self.mtime < time_since_midnight(self.last_time)):
+            self.reset_day()
 
-        if (te > t):
-            ambient_light += self.integrate_ambient(t, te)
-        #print("AMBIENT INSOLATION: (%d, %d) %.1f" %(ts/3600, te/3600, ambient_light))
-        return ambient_light
+    def reset_day(self):
+        self.scheduled_light = max(min(self.scheduled_light/(1.3-2*self.day_light_should_be_on_counter*self.period/86400.0), 14), 5)
+        self.behaviors_info["Light"] = (self.scheduled_light*60,(self.minutes,4*60),3*60)
 
-    # Helper function:
-    # How much time is left in the schedule for LightBehavior to run
-    def lighting_time_left(self, time):
-        time_left = 0
-        for interval in self.lighting_intervals:
-            if (interval[0] <= time and time < interval[1]):
-                time_left = interval[1] - time
-            elif (time < interval[0]):
-                time_left += interval[1] - interval[0]
+        self.scheduled_raise_moist = max(min(self.scheduled_raise_moist/(1.3-2*self.day_rm_should_be_on_counter*self.period/86400.0), 6), 1)
+        self.behaviors_info["RaiseMoist"] = (self.scheduled_raise_moist*60,(2*60,4*60),12*60)
+        
+        self.problem = Greenhouse_Scheduler("test_schedule.txt",self.behaviors_info, self.minutes)
+        self.solution = self.problem.solveProblem(visualize=False)
+        if (self.solution == cp_model.INFEASIBLE):
+            print("No solution feasable 1")
+            self.scheduled_light = max(2, self.scheduled_raise_moist - 4)
+            self.behaviors_info["Light"] = (self.scheduled_light*60,(self.minutes,4*60),3*60)
+            self.scheduled_raise_moist = max(1, self.scheduled_raise_moist - 2)
+            self.behaviors_info["RaiseMoist"] = (self.scheduled_raise_moist*60,(2*60,4*60),12*60)
+            self.problem = Greenhouse_Scheduler("test_schedule.txt",self.behaviors_info, self.minutes)
+            self.solution = self.problem.solveProblem(visualize=False)
+            if (self.solution == cp_model.INFEASIBLE):
+                print("No solution feasable 2")
 
-        return time_left
+        with open(self.filename, "a") as f:
+            f.write(
+                f"{self.time},"
+                f"{self.day_light_should_be_on_counter*self.period/86400.0},"
+                f"{self.scheduled_light},"
+                f"{self.day_rm_should_be_on_counter*self.period/86400.0},"
+                f"{self.scheduled_raise_moist}\n"
+            )
+        
+        self.last_time = self.mtime
+        self.day_light_should_be_on_counter = 0
+
+            
+
+        
+
+    
