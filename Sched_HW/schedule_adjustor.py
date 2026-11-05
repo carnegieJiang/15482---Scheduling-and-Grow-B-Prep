@@ -108,7 +108,7 @@ class ScheduleAdjustmentMonitor(Monitor):
             if (self.solution == cp_model.INFEASIBLE):
                 print("No solution feasable 2")
         
-        shutil.copy("test_schedule.txt", f"./schedules/schedule_{str(int(self.sensordata['unix_time']))}.txt")
+        shutil.copy("test_schedule.txt", f"./normal_scheduler_run_1_schedules/schedule_{str(int(self.sensordata['unix_time']))}.txt")
 
         with open(self.filename, "a") as f:
             f.write(

@@ -151,7 +151,7 @@ class LayeredGreenhouseAgent(GreenhouseAgent):
             [
                 light_monitor.LightMonitor(),
                 logging_monitor.LoggingMonitor(),
-                schedule_adjustor.ScheduleAdjustmentMonitor()
+                # schedule_adjustor.ScheduleAdjustmentMonitor()
             ]
         )
         # END STUDENT CODE
